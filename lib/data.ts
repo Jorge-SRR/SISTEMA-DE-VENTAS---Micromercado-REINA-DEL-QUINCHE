@@ -29,11 +29,40 @@ export type Usuario = {
   id: string
   nombre: string
   usuario: string
-  rol: "Administrador" | "Cajero" | "Bodeguero"
+  password: string
+  rol: "Administrador" | "Cajero"
   activo: boolean
 }
 
-export const productos: Producto[] = [
+export type LineItem = {
+  productoId: string
+  nombre: string
+  precio: number
+  cantidad: number
+}
+
+export type Venta = {
+  id: string
+  numero: string
+  fecha: string
+  items: LineItem[]
+  subtotal: number
+  iva: number
+  total: number
+  cajero: string
+}
+
+export const CATEGORIAS = [
+  "Abarrotes",
+  "Lácteos",
+  "Bebidas",
+  "Panadería",
+  "Limpieza",
+  "Enlatados",
+  "Snacks",
+] as const
+
+export const productosIniciales: Producto[] = [
   { id: "p1", codigo: "7861001", nombre: "Arroz Flor 1kg", categoria: "Abarrotes", precio: 1.35, stock: 120, stockMinimo: 20 },
   { id: "p2", codigo: "7861002", nombre: "Aceite Girasol 1L", categoria: "Abarrotes", precio: 2.9, stock: 8, stockMinimo: 15 },
   { id: "p3", codigo: "7861003", nombre: "Azúcar Morena 2kg", categoria: "Abarrotes", precio: 2.15, stock: 64, stockMinimo: 20 },
@@ -52,7 +81,7 @@ export const productos: Producto[] = [
   { id: "p16", codigo: "7861016", nombre: "Café Instantáneo 170g", categoria: "Abarrotes", precio: 6.4, stock: 22, stockMinimo: 8 },
 ]
 
-export const proveedores: Proveedor[] = [
+export const proveedoresIniciales: Proveedor[] = [
   { id: "s1", nombre: "Distribuidora Andina", contacto: "María Torres", telefono: "099 812 4501", categoria: "Abarrotes" },
   { id: "s2", nombre: "Lácteos del Valle", contacto: "Jorge Pérez", telefono: "098 445 2210", categoria: "Lácteos" },
   { id: "s3", nombre: "Bebidas Nacionales S.A.", contacto: "Ana Salazar", telefono: "096 771 0098", categoria: "Bebidas" },
@@ -60,18 +89,18 @@ export const proveedores: Proveedor[] = [
   { id: "s5", nombre: "Panadería El Trigal", contacto: "Sofía Ruiz", telefono: "099 002 1145", categoria: "Panadería" },
 ]
 
-export const compras: Compra[] = [
+export const comprasIniciales: Compra[] = [
   { id: "c1", proveedor: "Distribuidora Andina", fecha: "2026-07-22", items: 45, total: 512.4, estado: "Recibida" },
   { id: "c2", proveedor: "Lácteos del Valle", fecha: "2026-07-23", items: 30, total: 198.5, estado: "Recibida" },
   { id: "c3", proveedor: "Bebidas Nacionales S.A.", fecha: "2026-07-24", items: 60, total: 340.0, estado: "Pendiente" },
   { id: "c4", proveedor: "Limpieza Total Cía.", fecha: "2026-07-24", items: 18, total: 145.75, estado: "Pendiente" },
 ]
 
-export const usuarios: Usuario[] = [
-  { id: "u1", nombre: "Carlos Mendoza", usuario: "admin", rol: "Administrador", activo: true },
-  { id: "u2", nombre: "Elena Vaca", usuario: "elena.v", rol: "Cajero", activo: true },
-  { id: "u3", nombre: "Ricardo Suárez", usuario: "ricardo.s", rol: "Bodeguero", activo: true },
-  { id: "u4", nombre: "Paula Jiménez", usuario: "paula.j", rol: "Cajero", activo: false },
+export const usuariosIniciales: Usuario[] = [
+  { id: "u1", nombre: "Carlos Mendoza", usuario: "admin", password: "123456", rol: "Administrador", activo: true },
+  { id: "u2", nombre: "Elena Vaca", usuario: "elena.v", password: "123456", rol: "Cajero", activo: true },
+  { id: "u3", nombre: "Ricardo Suárez", usuario: "ricardo.s", password: "123456", rol: "Cajero", activo: true },
+  { id: "u4", nombre: "Paula Jiménez", usuario: "paula.j", password: "123456", rol: "Cajero", activo: false },
 ]
 
 export const IVA = 0.15
@@ -81,4 +110,8 @@ export function formatCurrency(value: number) {
     style: "currency",
     currency: "USD",
   }).format(value)
+}
+
+export function generarId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
 }

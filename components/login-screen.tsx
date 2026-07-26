@@ -3,15 +3,17 @@
 import { useState } from "react"
 import { Store, User, Lock, LogIn, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useApp } from "@/lib/store"
 
-export function LoginScreen({ onLogin }: { onLogin: () => void }) {
-  const [usuario, setUsuario] = useState("admin")
-  const [password, setPassword] = useState("123456")
+export function LoginScreen() {
+  const { login } = useApp()
+  const [usuario, setUsuario] = useState("")
+  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!usuario.trim() || !password.trim()) {
       setError("Ingrese su usuario y contraseña.")
@@ -19,10 +21,16 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
     }
     setError("")
     setLoading(true)
-    setTimeout(() => {
+    try {
+      const result = await login(usuario.trim(), password)
+      if (!result.ok) {
+        setError(result.error || "Error al iniciar sesión.")
+      }
+    } catch (e) {
+      setError("Error de conexión con el servidor.")
+    } finally {
       setLoading(false)
-      onLogin()
-    }, 700)
+    }
   }
 
   return (
@@ -50,8 +58,8 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
       <div className="flex w-full items-center justify-center p-6 md:w-1/2">
         <div className="w-full max-w-sm animate-[fadeIn_0.6s_ease-out]">
           <div className="mb-8 flex flex-col items-center text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-              <Store className="size-7" />
+            <div className="relative mb-2 flex size-20 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-border">
+              <img src="/logo.png" alt="Logo Reina del Quinche" className="size-full object-cover" />
             </div>
             <h1 className="mt-4 font-display text-2xl font-bold tracking-tight text-foreground">
               REINA DEL QUINCHE
@@ -112,8 +120,8 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
               </p>
             )}
 
-            <Button type="submit" disabled={loading} className="mt-2 h-11 w-full gap-2 text-sm font-semibold">
-              <LogIn className="size-4" />
+            <Button type="submit" disabled={loading} className="group mt-2 h-11 w-full gap-2 text-sm font-semibold transition-all hover:bg-primary/90">
+              <LogIn className="size-4 transition-transform group-hover:translate-x-1" />
               {loading ? "Ingresando..." : "Ingresar"}
             </Button>
 

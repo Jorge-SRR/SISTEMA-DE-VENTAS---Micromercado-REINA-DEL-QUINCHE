@@ -1,26 +1,51 @@
 "use client"
 
+import { useMemo } from "react"
 import { DollarSign, AlertTriangle, ShoppingBag, TrendingUp, ArrowRight } from "lucide-react"
-import { productos, compras, formatCurrency } from "@/lib/data"
-
-const ventasRecientes = [
-  { numero: "V-004521", hora: "10:42", items: 5, total: 12.85 },
-  { numero: "V-004520", hora: "10:31", items: 2, total: 3.6 },
-  { numero: "V-004519", hora: "10:18", items: 8, total: 24.4 },
-  { numero: "V-004518", hora: "09:57", items: 1, total: 6.4 },
-  { numero: "V-004517", hora: "09:45", items: 4, total: 9.15 },
-]
+import { useApp } from "@/lib/store"
+import { formatCurrency } from "@/lib/data"
 
 export function InicioView({ onNuevaVenta }: { onNuevaVenta: () => void }) {
-  const ventasDia = 486.35
+  const { productos, compras, ventas } = useApp()
+
+  // Ventas del día (hoy)
+  const ventasDia = useMemo(() => {
+    const hoy = new Date().toISOString().split("T")[0]
+    return ventas
+      .filter((v) => v.fecha.split("T")[0] === hoy)
+      .reduce((acc, v) => acc + v.total, 0)
+  }, [ventas])
+
+  // Últimas 5 ventas
+  const ventasRecientes = useMemo(() => {
+    return ventas.slice(0, 5).map((v) => ({
+      numero: v.numero,
+      hora: new Date(v.fecha).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }),
+      items: v.items.reduce((a, i) => a + i.cantidad, 0),
+      total: v.total,
+    }))
+  }, [ventas])
+
   const stockBajo = productos.filter((p) => p.stock <= p.stockMinimo)
   const totalCompras = compras.reduce((acc, c) => acc + c.total, 0)
+
+  // Comparación con ayer (simplificada)
+  const ventasAyer = useMemo(() => {
+    const ayer = new Date()
+    ayer.setDate(ayer.getDate() - 1)
+    const ayerStr = ayer.toISOString().split("T")[0]
+    return ventas
+      .filter((v) => v.fecha.split("T")[0] === ayerStr)
+      .reduce((acc, v) => acc + v.total, 0)
+  }, [ventas])
+
+  const pctCambio = ventasAyer > 0 ? Math.round(((ventasDia - ventasAyer) / ventasAyer) * 100) : 0
 
   const cards = [
     {
       label: "Ventas del Día",
       value: formatCurrency(ventasDia),
-      hint: "+12% vs. ayer",
+      hint: ventasAyer > 0 ? `${pctCambio >= 0 ? "+" : ""}${pctCambio}% vs. ayer` : `${ventas.length} ventas totales`,
       icon: DollarSign,
       tone: "text-primary bg-primary/10",
     },
@@ -44,18 +69,18 @@ export function InicioView({ onNuevaVenta }: { onNuevaVenta: () => void }) {
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-xl border border-border bg-card p-5">
+          <div key={c.label} className="group rounded-xl border border-border bg-card p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{c.label}</p>
-                <p className="mt-2 font-display text-3xl font-bold text-foreground">{c.value}</p>
+                <p className="mt-2 font-display text-3xl font-bold text-foreground transition-colors group-hover:text-primary">{c.value}</p>
               </div>
-              <span className={`flex size-10 items-center justify-center rounded-lg ${c.tone}`}>
+              <span className={`flex size-10 items-center justify-center rounded-lg transition-transform duration-300 group-hover:rotate-3 ${c.tone}`}>
                 <c.icon className="size-5" />
               </span>
             </div>
             <p className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
-              <TrendingUp className="size-3.5" />
+              <TrendingUp className="size-3.5 transition-transform group-hover:scale-110" />
               {c.hint}
             </p>
           </div>
@@ -69,33 +94,46 @@ export function InicioView({ onNuevaVenta }: { onNuevaVenta: () => void }) {
             <h3 className="font-display text-sm font-semibold text-foreground">Ventas recientes</h3>
             <button
               onClick={onNuevaVenta}
-              className="flex items-center gap-1 text-xs font-medium text-primary transition hover:gap-1.5"
+              className="group flex items-center gap-1 text-xs font-medium text-primary transition-all hover:text-primary/80"
             >
-              Nueva venta <ArrowRight className="size-3.5" />
+              Nueva venta <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
             </button>
           </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground">
-                <th className="px-5 py-2 font-medium">Comprobante</th>
-                <th className="px-5 py-2 font-medium">Hora</th>
-                <th className="px-5 py-2 font-medium">Items</th>
-                <th className="px-5 py-2 text-right font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {ventasRecientes.map((v) => (
-                <tr key={v.numero} className="transition hover:bg-accent/50">
-                  <td className="px-5 py-2.5 font-medium text-foreground">{v.numero}</td>
-                  <td className="px-5 py-2.5 text-muted-foreground">{v.hora}</td>
-                  <td className="px-5 py-2.5 text-muted-foreground">{v.items}</td>
-                  <td className="px-5 py-2.5 text-right font-semibold text-foreground">
-                    {formatCurrency(v.total)}
-                  </td>
+          {ventasRecientes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+              <ShoppingBag className="size-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">Aún no hay ventas registradas.</p>
+              <button
+                onClick={onNuevaVenta}
+                className="mt-1 text-sm font-medium text-primary transition hover:underline"
+              >
+                Realizar primera venta →
+              </button>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground">
+                  <th className="px-5 py-2 font-medium">Comprobante</th>
+                  <th className="px-5 py-2 font-medium">Hora</th>
+                  <th className="px-5 py-2 font-medium">Items</th>
+                  <th className="px-5 py-2 text-right font-medium">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {ventasRecientes.map((v) => (
+                  <tr key={v.numero} className="transition-colors hover:bg-accent/80">
+                    <td className="px-5 py-2.5 font-medium text-foreground">{v.numero}</td>
+                    <td className="px-5 py-2.5 text-muted-foreground">{v.hora}</td>
+                    <td className="px-5 py-2.5 text-muted-foreground">{v.items}</td>
+                    <td className="px-5 py-2.5 text-right font-semibold text-foreground">
+                      {formatCurrency(v.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Alertas de stock */}
@@ -104,19 +142,25 @@ export function InicioView({ onNuevaVenta }: { onNuevaVenta: () => void }) {
             <AlertTriangle className="size-4 text-amber-600" />
             <h3 className="font-display text-sm font-semibold text-foreground">Reposición urgente</h3>
           </div>
-          <ul className="divide-y divide-border">
-            {stockBajo.map((p) => (
-              <li key={p.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{p.nombre}</p>
-                  <p className="text-xs text-muted-foreground">Mínimo: {p.stockMinimo} u.</p>
-                </div>
-                <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600">
-                  {p.stock} u.
-                </span>
-              </li>
-            ))}
-          </ul>
+          {stockBajo.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+              <p className="text-sm text-muted-foreground">Todos los productos están bien abastecidos. 🎉</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {stockBajo.map((p) => (
+                <li key={p.id} className="flex items-center justify-between px-5 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{p.nombre}</p>
+                    <p className="text-xs text-muted-foreground">Mínimo: {p.stockMinimo} u.</p>
+                  </div>
+                  <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600">
+                    {p.stock} u.
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

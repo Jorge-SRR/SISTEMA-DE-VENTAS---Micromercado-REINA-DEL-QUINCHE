@@ -15,6 +15,7 @@ import {
   Menu,
   X,
 } from "lucide-react"
+import { useApp } from "@/lib/store"
 import { InicioView } from "@/components/views/inicio-view"
 import { PosView } from "@/components/views/pos-view"
 import { ProductosView } from "@/components/views/productos-view"
@@ -34,15 +35,15 @@ type NavKey =
   | "reportes"
   | "usuarios"
 
-const nav: { key: NavKey; label: string; icon: typeof Home }[] = [
+const allNav: { key: NavKey; label: string; icon: typeof Home; adminOnly?: boolean }[] = [
   { key: "inicio", label: "Inicio", icon: Home },
   { key: "venta", label: "Nueva Venta", icon: ShoppingCart },
-  { key: "productos", label: "Productos", icon: Package },
-  { key: "inventario", label: "Inventario", icon: Boxes },
-  { key: "proveedores", label: "Proveedores", icon: Truck },
-  { key: "compras", label: "Compras", icon: ClipboardList },
-  { key: "reportes", label: "Reportes", icon: BarChart3 },
-  { key: "usuarios", label: "Usuarios", icon: Users },
+  { key: "productos", label: "Productos", icon: Package, adminOnly: true },
+  { key: "inventario", label: "Inventario", icon: Boxes, adminOnly: true },
+  { key: "proveedores", label: "Proveedores", icon: Truck, adminOnly: true },
+  { key: "compras", label: "Compras", icon: ClipboardList, adminOnly: true },
+  { key: "reportes", label: "Reportes", icon: BarChart3, adminOnly: true },
+  { key: "usuarios", label: "Usuarios", icon: Users, adminOnly: true },
 ]
 
 const titles: Record<NavKey, { title: string; subtitle: string }> = {
@@ -57,20 +58,36 @@ const titles: Record<NavKey, { title: string; subtitle: string }> = {
 }
 
 export function Dashboard({ onLogout }: { onLogout: () => void }) {
+  const { currentUser } = useApp()
   const [active, setActive] = useState<NavKey>("inicio")
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const isAdmin = currentUser?.rol === "Administrador"
+
+  // Filtrar navegación según rol
+  const nav = allNav.filter((item) => !item.adminOnly || isAdmin)
 
   function go(key: NavKey) {
     setActive(key)
     setMobileOpen(false)
   }
 
+  // Iniciales del usuario para el avatar
+  const initials = currentUser
+    ? currentUser.nombre
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "??"
+
   const SidebarContent = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-5 py-5">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Store className="size-5" />
-        </span>
+        <div className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-border">
+          <img src="/logo.png" alt="Logo Reina del Quinche" className="size-full object-cover" />
+        </div>
         <div className="min-w-0">
           <p className="truncate font-display text-sm font-bold leading-tight text-sidebar-foreground">
             REINA DEL QUINCHE
@@ -86,13 +103,13 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
             <button
               key={item.key}
               onClick={() => go(item.key)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+              className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                 isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               }`}
             >
-              <item.icon className="size-5 shrink-0" />
+              <item.icon className={`size-5 shrink-0 transition-transform ${isActive ? '' : 'group-hover:scale-110 group-hover:text-primary'}`} />
               {item.label}
             </button>
           )
@@ -102,9 +119,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
       <div className="border-t border-sidebar-border p-3">
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
         >
-          <LogOut className="size-5" />
+          <LogOut className="size-5 transition-transform group-hover:-translate-x-1" />
           Cerrar sesión
         </button>
       </div>
@@ -157,11 +174,11 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-right sm:block">
-              <span className="block text-sm font-medium text-foreground">Carlos Mendoza</span>
-              <span className="block text-xs text-muted-foreground">Administrador</span>
+              <span className="block text-sm font-medium text-foreground">{currentUser?.nombre ?? "Usuario"}</span>
+              <span className="block text-xs text-muted-foreground">{currentUser?.rol ?? "Sin rol"}</span>
             </span>
             <span className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-              CM
+              {initials}
             </span>
           </div>
         </header>

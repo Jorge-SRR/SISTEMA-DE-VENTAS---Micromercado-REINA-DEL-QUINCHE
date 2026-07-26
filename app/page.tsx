@@ -1,15 +1,23 @@
 "use client"
 
-import { useState } from "react"
 import { LoginScreen } from "@/components/login-screen"
 import { Dashboard } from "@/components/dashboard"
+import { AppProvider, useApp } from "@/lib/store"
 
-export default function Page() {
-  const [authenticated, setAuthenticated] = useState(false)
+function AppContent() {
+  const { currentUser, logout } = useApp()
 
-  if (!authenticated) {
-    return <LoginScreen onLogin={() => setAuthenticated(true)} />
+  if (!currentUser) {
+    return <LoginScreen />
   }
 
-  return <Dashboard onLogout={() => setAuthenticated(false)} />
+  return <Dashboard onLogout={logout} />
+}
+
+export default function Page() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  )
 }

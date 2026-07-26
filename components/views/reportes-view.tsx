@@ -1,28 +1,66 @@
 "use client"
 
+import { useMemo } from "react"
+import { useApp } from "@/lib/store"
 import { formatCurrency } from "@/lib/data"
 
-const ventasSemana = [
-  { dia: "Lun", monto: 412 },
-  { dia: "Mar", monto: 388 },
-  { dia: "Mié", monto: 455 },
-  { dia: "Jue", monto: 402 },
-  { dia: "Vie", monto: 601 },
-  { dia: "Sáb", monto: 742 },
-  { dia: "Dom", monto: 486 },
-]
-
-const topCategorias = [
-  { nombre: "Abarrotes", pct: 34 },
-  { nombre: "Bebidas", pct: 24 },
-  { nombre: "Lácteos", pct: 18 },
-  { nombre: "Limpieza", pct: 14 },
-  { nombre: "Snacks", pct: 10 },
-]
-
 export function ReportesView() {
-  const maxMonto = Math.max(...ventasSemana.map((v) => v.monto))
+  const { ventas, productos } = useApp()
+
+  // Calcular ventas por día de la semana (últimos 7 días)
+  const ventasSemana = useMemo(() => {
+    const dias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+    const ahora = new Date()
+    const resultado: { dia: string; monto: number }[] = []
+
+    for (let i = 6; i >= 0; i--) {
+      const fecha = new Date(ahora)
+      fecha.setDate(fecha.getDate() - i)
+      const diaStr = dias[fecha.getDay()]
+      const fechaStr = fecha.toISOString().split("T")[0]
+      const montoDelDia = ventas
+        .filter((v) => v.fecha.split("T")[0] === fechaStr)
+        .reduce((acc, v) => acc + v.total, 0)
+      resultado.push({ dia: diaStr, monto: Math.round(montoDelDia * 100) / 100 })
+    }
+    return resultado
+  }, [ventas])
+
+  // Top categorías basado en ventas reales
+  const topCategorias = useMemo(() => {
+    const catMap: Record<string, number> = {}
+    let totalVendido = 0
+    ventas.forEach((v) => {
+      v.items.forEach((item) => {
+        const prod = productos.find((p) => p.id === item.productoId)
+        const cat = prod?.categoria ?? "Otros"
+        const monto = item.precio * item.cantidad
+        catMap[cat] = (catMap[cat] || 0) + monto
+        totalVendido += monto
+      })
+    })
+    if (totalVendido === 0) {
+      // Datos placeholder si no hay ventas
+      return [
+        { nombre: "Abarrotes", pct: 34 },
+        { nombre: "Bebidas", pct: 24 },
+        { nombre: "Lácteos", pct: 18 },
+        { nombre: "Limpieza", pct: 14 },
+        { nombre: "Snacks", pct: 10 },
+      ]
+    }
+    return Object.entries(catMap)
+      .map(([nombre, monto]) => ({ nombre, pct: Math.round((monto / totalVendido) * 100) }))
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 5)
+  }, [ventas, productos])
+
   const totalSemana = ventasSemana.reduce((acc, v) => acc + v.monto, 0)
+  const maxMonto = Math.max(...ventasSemana.map((v) => v.monto), 1)
+
+  // Métricas dinámicas
+  const totalTransacciones = ventas.length
+  const ticketPromedio = totalTransacciones > 0 ? ventas.reduce((acc, v) => acc + v.total, 0) / totalTransacciones : 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,12 +74,12 @@ export function ReportesView() {
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Ticket promedio</p>
           <p className="mt-1.5 font-display text-2xl font-bold text-foreground">
-            {formatCurrency(11.4)}
+            {formatCurrency(ticketPromedio)}
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Transacciones</p>
-          <p className="mt-1.5 font-display text-2xl font-bold text-foreground">301</p>
+          <p className="mt-1.5 font-display text-2xl font-bold text-foreground">{totalTransacciones}</p>
         </div>
       </div>
 
@@ -55,7 +93,7 @@ export function ReportesView() {
                 <span className="text-xs font-medium text-muted-foreground">${v.monto}</span>
                 <div
                   className="w-full rounded-t-md bg-primary transition-all"
-                  style={{ height: `${(v.monto / maxMonto) * 100}%` }}
+                  style={{ height: `${(v.monto / maxMonto) * 100}%`, minHeight: v.monto > 0 ? "4px" : "2px" }}
                 />
                 <span className="text-xs text-muted-foreground">{v.dia}</span>
               </div>
